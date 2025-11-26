@@ -1,0 +1,88 @@
+name: Security CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  python-security:
+    name: Python dependency & basic security checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          fi
+          pip install bandit safety
+
+      - name: Safety dependency scan
+        run: |
+          if [ -f "requirements.txt" ]; then
+            safety check -r requirements.txt || true
+          else
+            echo "No requirements.txt found, skipping safety scan."
+          fi
+
+      - name: Bandit basic SAST scan
+        run: |
+          if [ -d "app" ]; then
+            bandit -r app || true
+          else
+            echo "No app directory found, skipping bandit scan."
+          fi
+
+  secrets-scan:
+    name: Simple secret pattern scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Search for potential secrets
+        run: |
+          echo "Scanning for potential secrets (very basic patterns)..."
+          grep -RIn --exclude-dir=".git" --exclude="*.md" -E "AWS_SECRET_ACCESS_KEY|BEGIN RSA PRIVATE KEY|SECRET_KEY" . || echo "No obvious secrets found."
+
+  terraform-validate:
+    name: Terraform format & validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.0
+
+      - name: Terraform fmt
+        run: |
+          if [ -d "terraform" ]; then
+            terraform -chdir=terraform fmt -check || true
+          else
+            echo "No terraform directory found, skipping terraform fmt."
+          fi
+
+      - name: Terraform validate
+        run: |
+          if [ -d "terraform" ]; then
+            terraform -chdir=terraform init -backend=false
+            terraform -chdir=terraform validate || true
+          else
+            echo "No terraform directory found, skipping terraform validate."
+          fi
