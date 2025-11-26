@@ -44,3 +44,8 @@ Depending on which parts you use:
 ## 📌 Notes
 
 These templates are intentionally minimal and vendor-neutral, designed to show **how you think about security in pipelines**, not to replace full enterprise tooling.
+
+---
+
+### 📝 Update Log
+- Initial version with pipelines, security scans, and Terraform baseline (2025-01)
